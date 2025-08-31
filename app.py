@@ -34,7 +34,9 @@ class SQLFormatterApp:
         self.master = master
         master.title("PL/SQL Query Formatter")
         master.geometry("1300x950")
-        master.minsize(1000, 750)
+        master.minsize(800, 600)
+        master.rowconfigure(0, weight=1)
+        master.columnconfigure(0, weight=1)
 
         # Style setup
         self.style = ttk.Style()
