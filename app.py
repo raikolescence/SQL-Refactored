@@ -23,6 +23,8 @@ try:
     TKCALENDAR_AVAILABLE = True
 except ImportError:
     TKCALENDAR_AVAILABLE = False
+    from tkinter import ttk
+    DateEntry = ttk.Entry  # Fallback to Entry if tkcalendar is not available
     print("WARNING: tkcalendar library not found. Date inputs will be text fields. "
           "Please install tkcalendar for a better experience (pip install tkcalendar).")
 
@@ -194,32 +196,57 @@ class SQLFormatterApp:
             main_notebook.add(tab_frame, text=text)
             creation_method(tab_frame)
 
+    def switch_config(self, *args):
+        import importlib
+        import config as config_module
+        selected = self.config_name_var.get()
+        # Reload config module and set the default config
+        importlib.reload(config_module)
+        if selected in config_module.discovered_configs:
+            config_module.default_config = config_module.discovered_configs[selected]
+            config_module.SELECT_OPTIONS = OrderedDict(config_module.default_config["SELECT_OPTIONS"])
+            config_module.FILTER_OPTIONS = OrderedDict(config_module.default_config["FILTER_OPTIONS"])
+            config_module.TEXT_OPERATORS = config_module.default_config["TEXT_OPERATORS"]
+            config_module.NUMERIC_OPERATORS = config_module.default_config["NUMERIC_OPERATORS"]
+            config_module.DATE_OPERATORS = config_module.default_config["DATE_OPERATORS"]
+        # Rebuild all tabs
+        for widget in self.master.winfo_children():
+            widget.destroy()
+        self.__init__(self.master)
+
     def _create_config_tab(self, tab):
         config_frame = ttk.LabelFrame(tab, text="General Settings", padding="10")
         config_frame.pack(fill=tk.X, expand=False, padx=5, pady=5)
         config_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(config_frame, text="Load Saved Query:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        # Config switcher
+        ttk.Label(config_frame, text="Config Preset:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.config_name_var = tk.StringVar(value=next(iter(config.discovered_configs.keys()), ""))
+        config_combo = ttk.Combobox(config_frame, textvariable=self.config_name_var, values=list(config.discovered_configs.keys()), state="readonly")
+        config_combo.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
+        config_combo.bind("<<ComboboxSelected>>", self.switch_config)
+
+        ttk.Label(config_frame, text="Load Saved Query:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         self.saved_queries_combo_var = tk.StringVar()
         self.saved_queries_combo = ttk.Combobox(config_frame, textvariable=self.saved_queries_combo_var, state="readonly")
-        self.saved_queries_combo.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
+        self.saved_queries_combo.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=2)
         load_button = ttk.Button(config_frame, text="Load", command=self.load_query_from_config_tab)
-        load_button.grid(row=0, column=2, padx=5, pady=2)
+        load_button.grid(row=1, column=2, padx=5, pady=2)
 
-        ttk.Label(config_frame, text="Good Bins for Yield:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(config_frame, text="Good Bins for Yield:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
         self.good_bins_entry = ttk.Entry(config_frame, textvariable=self.good_bins_var)
-        self.good_bins_entry.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=2)
+        self.good_bins_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=2)
         ToolTip(self.good_bins_entry, "Comma-separated list of BIN numbers considered 'good' for yield (e.g., 1,2,3).")
-        ttk.Label(config_frame, text="e.g., 1,2,3,5", style="Hint.TLabel").grid(row=1, column=2, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(config_frame, text="e.g., 1,2,3,5", style="Hint.TLabel").grid(row=2, column=2, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Label(config_frame, text="Max Rows (ROWNUM):").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(config_frame, textvariable=self.max_rows_var, width=10).grid(row=2, column=1, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(config_frame, text="Max Rows (ROWNUM):").grid(row=3, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Entry(config_frame, textvariable=self.max_rows_var, width=10).grid(row=3, column=1, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Checkbutton(config_frame, text="Use SELECT DISTINCT", variable=self.select_distinct_var).grid(row=3, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
+        ttk.Checkbutton(config_frame, text="Use SELECT DISTINCT", variable=self.select_distinct_var).grid(row=4, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
 
         dedup_check = ttk.Checkbutton(config_frame, text="Deduplicate Wafer Entries (keeps latest by end_time)",
                                       variable=self.deduplicate_wafer_entries_var)
-        dedup_check.grid(row=4, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
+        dedup_check.grid(row=5, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
         ToolTip(dedup_check, "Note: This feature is a placeholder and not fully implemented in the SQL generation logic.")
 
     def _create_select_tab(self, tab):
@@ -312,7 +339,7 @@ class SQLFormatterApp:
             val_var = tk.StringVar(value=val_default)
             time_var = None
             if props["type"] == "date" and TKCALENDAR_AVAILABLE:
-                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, date_pattern='yyyy-mm-dd', borderwidth=2, state="readonly")
+                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, borderwidth=2, state="readonly")
                 date_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
                 default_time = "23:59:59" if "To" in name and props["default_op"] == "<=" else "00:00:00"
                 time_var = tk.StringVar(value=default_time)
