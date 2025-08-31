@@ -341,14 +341,16 @@ class SQLFormatterApp:
             val_var = tk.StringVar(value=val_default)
             time_var = None
             if props["type"] == "date" and TKCALENDAR_AVAILABLE:
-                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, borderwidth=2, state="readonly")
+                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, date_pattern='yyyy-mm-dd', borderwidth=2, state="readonly")
                 date_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
                 default_time = "23:59:59" if "To" in name and props["default_op"] == "<=" else "00:00:00"
                 time_var = tk.StringVar(value=default_time)
-                ttk.Entry(row_frame, textvariable=time_var, width=10).pack(side=tk.LEFT, padx=2)
+                time_entry = ttk.Entry(row_frame, textvariable=time_var, width=10)
+                time_entry.pack(side=tk.LEFT, padx=2)
                 ttk.Label(row_frame, text="(HH:MM:SS)", style="Hint.TLabel").pack(side=tk.LEFT, padx=0)
             else:
-                ttk.Entry(row_frame, textvariable=val_var).pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+                entry = ttk.Entry(row_frame, textvariable=val_var)
+                entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
             if props.get("hint"):
                 ttk.Label(row_frame, text=f"({props['hint']})", style="Hint.TLabel").pack(side=tk.LEFT, padx=5)
             self.filter_widgets[name] = {'op_var': op_var, 'val_var': val_var, 'time_var': time_var, 'props': props}
