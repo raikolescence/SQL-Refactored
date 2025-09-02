@@ -148,11 +148,11 @@
     [
       "Year and Quarter Preview",
       {
-        "sql": "TO_CHAR(w.end_time, 'YYYY') || ' Q' || TO_CHAR(w.end_time, 'Q') || ' ' || TO_CHAR(w.end_time, 'YYYY') - 1",
+        "sql": "TO_CHAR(w.end_time, 'YYYY') || ' Q' || TO_CHAR(w.end_time, 'Q') || ' ' || TO_CHAR(w.end_time, 'YYYY')",
         "alias": "year_quarter_prev",
         "default": false,
         "agg": false,
-        "group": "year_quarter_prev",
+        "group": "TO_CHAR(w.end_time, 'YYYY') || ' Q' || TO_CHAR(w.end_time, 'Q') || ' ' || TO_CHAR(w.end_time, 'YYYY')",
         "dedup_group": "year_quarter_prev",
         "requires_columns": ["w.end_time"]
       }
@@ -164,8 +164,19 @@
         "alias": "year_week",
         "default": false,
         "agg": false,
-        "group": "year_week",
+        "group": "TO_CHAR(w.end_time, 'IYYY') || ' Week ' || TO_CHAR(w.end_time, 'IW')",
         "dedup_group": "year_week",
+        "requires_columns": ["w.end_time"]
+      }
+    ],
+    [
+    "YearMonth",
+      {
+        "sql": "to_char(w.end_time, 'YYYY MONTH')",
+        "default": false,
+        "agg": false,
+        "group": "to_char(w.end_time, 'YYYY MONTH')",
+        "dedup_group": "year_month",
         "requires_columns": ["w.end_time"]
       }
     ],
