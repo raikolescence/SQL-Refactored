@@ -133,6 +133,8 @@ def _build_select_and_group_by_clauses(params, good_bins_list):
         if props.get("agg"):
             has_aggregates = True
             template = props.get("sql_template", props.get("sql", ""))
+            if not isinstance(template, str):
+                raise QueryGenerationError(f"Invalid SQL template for column '{name}': expected a string, got {type(template).__name__}")
             expr = template.replace("{good_bins_placeholder}", good_bins_sql).replace("{BIN_col}", "v.bin").replace("{TOTAL_col}", "v.total").replace("{WAFER_ID_col}", "v.wafer_id")
             alias = props.get("alias")
             select_clauses.append(f"{expr} AS {alias}" if alias else expr)

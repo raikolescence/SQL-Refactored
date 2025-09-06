@@ -48,6 +48,11 @@ if default_config:
     TEXT_OPERATORS = default_config["TEXT_OPERATORS"]
     NUMERIC_OPERATORS = default_config["NUMERIC_OPERATORS"]
     DATE_OPERATORS = default_config["DATE_OPERATORS"]
+    SAVE_LOCATION = default_config.get("SAVE_LOCATION", {"default_folder": "", "description": "Default folder to save Excel spreadsheets"})
+    # Expose convenient constant for default save folder
+    DEFAULT_SAVE_FOLDER = SAVE_LOCATION.get("default_folder", "")
 else:
     SELECT_OPTIONS = FILTER_OPTIONS = OrderedDict()
     TEXT_OPERATORS = NUMERIC_OPERATORS = DATE_OPERATORS = []
+    SAVE_LOCATION = {"default_folder": "", "description": "Default folder to save Excel spreadsheets"}
+    DEFAULT_SAVE_FOLDER = ""

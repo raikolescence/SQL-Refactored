@@ -8,7 +8,9 @@
         "agg": false,
         "group": "test_area",
         "dedup_group": "test_area",
-        "requires_columns": ["test_area"]
+        "requires_columns": [
+          "test_area"
+        ]
       }
     ],
     [
@@ -19,7 +21,9 @@
         "agg": false,
         "group": "sms_device",
         "dedup_group": "sms_device",
-        "requires_columns": ["sms_device"]
+        "requires_columns": [
+          "sms_device"
+        ]
       }
     ],
     [
@@ -30,7 +34,9 @@
         "agg": false,
         "group": "srcfab",
         "dedup_group": "srcfab",
-        "requires_columns": ["srcfab"]
+        "requires_columns": [
+          "srcfab"
+        ]
       }
     ],
     [
@@ -41,7 +47,9 @@
         "agg": false,
         "group": "w.test_program",
         "dedup_group": "w_test_program",
-        "requires_columns": ["w.test_program"]
+        "requires_columns": [
+          "w.test_program"
+        ]
       }
     ],
     [
@@ -52,7 +60,9 @@
         "agg": false,
         "group": "v.program",
         "dedup_group": "v_program",
-        "requires_columns": ["v.program"]
+        "requires_columns": [
+          "v.program"
+        ]
       }
     ],
     [
@@ -63,7 +73,9 @@
         "agg": false,
         "group": "v.lot",
         "dedup_group": "v_lot",
-        "requires_columns": ["v.lot"]
+        "requires_columns": [
+          "v.lot"
+        ]
       }
     ],
     [
@@ -74,7 +86,9 @@
         "agg": false,
         "group": "v.fablot",
         "dedup_group": "v_fablot",
-        "requires_columns": ["v.fablot"]
+        "requires_columns": [
+          "v.fablot"
+        ]
       }
     ],
     [
@@ -85,7 +99,9 @@
         "agg": false,
         "group": "w.tester",
         "dedup_group": "w_tester",
-        "requires_columns": ["w.tester"]
+        "requires_columns": [
+          "w.tester"
+        ]
       }
     ],
     [
@@ -96,7 +112,9 @@
         "agg": false,
         "group": "w.prober",
         "dedup_group": "w_prober",
-        "requires_columns": ["w.prober"]
+        "requires_columns": [
+          "w.prober"
+        ]
       }
     ],
     [
@@ -107,7 +125,9 @@
         "agg": false,
         "group": "w.probe_card",
         "dedup_group": "w_probe_card",
-        "requires_columns": ["w.probe_card"]
+        "requires_columns": [
+          "w.probe_card"
+        ]
       }
     ],
     [
@@ -119,7 +139,9 @@
         "agg": false,
         "group": "w.loadbd",
         "dedup_group": "w_loadbd",
-        "requires_columns": ["w.loadbd"]
+        "requires_columns": [
+          "w.loadbd"
+        ]
       }
     ],
     [
@@ -130,7 +152,9 @@
         "agg": false,
         "group": "v.wafer_id",
         "dedup_group": "v_wafer_id",
-        "requires_columns": ["v.wafer_id"]
+        "requires_columns": [
+          "v.wafer_id"
+        ]
       }
     ],
     [
@@ -142,7 +166,9 @@
         "agg": false,
         "group": "to_char(w.end_time,'MON/DD/YYYY')",
         "dedup_group": "date_1",
-        "requires_columns": ["w.end_time"]
+        "requires_columns": [
+          "w.end_time"
+        ]
       }
     ],
     [
@@ -154,7 +180,9 @@
         "agg": false,
         "group": "TO_CHAR(w.end_time, 'YYYY') || ' Q' || TO_CHAR(w.end_time, 'Q') || ' ' || TO_CHAR(w.end_time, 'YYYY')",
         "dedup_group": "year_quarter_prev",
-        "requires_columns": ["w.end_time"]
+        "requires_columns": [
+          "w.end_time"
+        ]
       }
     ],
     [
@@ -166,18 +194,22 @@
         "agg": false,
         "group": "TO_CHAR(w.end_time, 'IYYY') || ' Week ' || TO_CHAR(w.end_time, 'IW')",
         "dedup_group": "year_week",
-        "requires_columns": ["w.end_time"]
+        "requires_columns": [
+          "w.end_time"
+        ]
       }
     ],
     [
-    "YearMonth",
+      "YearMonth",
       {
         "sql": "to_char(w.end_time, 'YYYY MONTH')",
         "default": false,
         "agg": false,
         "group": "to_char(w.end_time, 'YYYY MONTH')",
         "dedup_group": "year_month",
-        "requires_columns": ["w.end_time"]
+        "requires_columns": [
+          "w.end_time"
+        ]
       }
     ],
     [
@@ -188,7 +220,9 @@
         "agg": false,
         "group": "w.end_time",
         "dedup_group": "w_end_time",
-        "requires_columns": ["w.end_time"]
+        "requires_columns": [
+          "w.end_time"
+        ]
       }
     ],
     [
@@ -199,7 +233,10 @@
         "default": true,
         "agg": true,
         "group": null,
-        "requires_columns": ["v.bin", "v.total"]
+        "requires_columns": [
+          "v.bin",
+          "v.total"
+        ]
       }
     ],
     [
@@ -210,7 +247,10 @@
         "default": true,
         "agg": true,
         "group": null,
-        "requires_columns": ["v.bin", "v.total"]
+        "requires_columns": [
+          "v.bin",
+          "v.total"
+        ]
       }
     ],
     [
@@ -232,37 +272,62 @@
         "default": false,
         "agg": true,
         "group": null,
-        "requires_columns": ["v.wafer_id", "w.wafer_id"]
+        "requires_columns": [
+          "v.wafer_id",
+          "w.wafer_id"
+        ]
       }
     ],
-      [
-    "MST Revision",
-    {
-      "sql": "w.sw_rev",
-      "alias": "MST_Revision",
-      "default": true,
-      "agg": false,
-      "group": "w.sw_rev",
-      "dedup_group": "MST_Revision",
-      "requires_columns": ["w.sw_rev"]
-    }
+    [
+      "MST Revision",
+      {
+        "sql": "w.sw_rev",
+        "alias": "MST_Revision",
+        "default": true,
+        "agg": false,
+        "group": "w.sw_rev",
+        "dedup_group": "MST_Revision",
+        "requires_columns": [
+          "w.sw_rev"
+        ]
+      }
+    ],
+    [
+      "USP Revision",
+      {
+        "sql": "w.usp_rev",
+        "alias": "USP_Revision",
+        "default": true,
+        "agg": false,
+        "group": "w.usp_rev",
+        "dedup_group": "USP_Revision",
+        "requires_columns": [
+          "w.usp_rev"
+        ]
+      }
+    ]
   ],
-  [
-    "USP Revision",
-    {
-      "sql": "w.usp_rev",
-      "alias": "USP_Revision",
-      "default": true,
-      "agg": false,
-      "group": "w.usp_rev",
-      "dedup_group": "USP_Revision",
-      "requires_columns": ["w.usp_rev"]
-    }
-  ]
+  "TEXT_OPERATORS": [
+    "=",
+    "LIKE",
+    "IN",
+    "!="
   ],
-  "TEXT_OPERATORS": ["=", "LIKE", "IN", "!="],
-  "NUMERIC_OPERATORS": ["=", "!=", ">", "<", ">=", "<="],
-  "DATE_OPERATORS": [">=", "<=", "=", ">", "<"],
+  "NUMERIC_OPERATORS": [
+    "=",
+    "!=",
+    ">",
+    "<",
+    ">=",
+    "<="
+  ],
+  "DATE_OPERATORS": [
+    ">=",
+    "<=",
+    "=",
+    ">",
+    "<"
+  ],
   "FILTER_OPTIONS": [
     [
       "Program (v.program)",
@@ -271,7 +336,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., %ABC123%"
       }
     ],
@@ -282,7 +352,9 @@
         "default_op": "IN",
         "default_val": "",
         "type": "text",
-        "operators": ["IN"],
+        "operators": [
+          "IN"
+        ],
         "hint": "e.g., '17','145' or 17,145"
       }
     ],
@@ -293,7 +365,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., KY8P%"
       }
     ],
@@ -304,7 +381,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., %PP2830%"
       }
     ],
@@ -315,7 +397,12 @@
         "default_op": "LIKE",
         "default_val": "TT5003%",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., TT2852% or TT5200,TT2500 for IN"
       }
     ],
@@ -326,7 +413,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., %"
       }
     ],
@@ -337,7 +429,12 @@
         "default_op": "=",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., PP3105"
       }
     ],
@@ -348,7 +445,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., %XA$4H%"
       }
     ],
@@ -359,7 +461,14 @@
         "default_op": "=",
         "default_val": "",
         "type": "numeric",
-        "operators": ["=", "!=", ">", "<", ">=", "<="],
+        "operators": [
+          "=",
+          "!=",
+          ">",
+          "<",
+          ">=",
+          "<="
+        ],
         "hint": "e.g., 0"
       }
     ],
@@ -370,7 +479,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., %WAFER01%"
       }
     ],
@@ -381,7 +495,12 @@
         "default_op": "=",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., 5014844"
       }
     ],
@@ -392,7 +511,11 @@
         "default_op": "IN",
         "default_val": "",
         "type": "text",
-        "operators": ["IN", "=", "LIKE"],
+        "operators": [
+          "IN",
+          "=",
+          "LIKE"
+        ],
         "hint": "e.g., 'FB01','FB02' or FB01,FB02 for IN"
       }
     ],
@@ -403,7 +526,12 @@
         "default_op": "LIKE",
         "default_val": "",
         "type": "text",
-        "operators": ["=", "LIKE", "IN", "!="],
+        "operators": [
+          "=",
+          "LIKE",
+          "IN",
+          "!="
+        ],
         "hint": "e.g., MP1"
       }
     ],
@@ -414,7 +542,13 @@
         "default_op": ">=",
         "default_val": "{{TODAY}}",
         "type": "date",
-        "operators": [">=", "<=", "=", ">", "<"],
+        "operators": [
+          ">=",
+          "<=",
+          "=",
+          ">",
+          "<"
+        ],
         "hint": "YYYY-MM-DD"
       }
     ],
@@ -425,9 +559,19 @@
         "default_op": "<=",
         "default_val": "{{TODAY}}",
         "type": "date",
-        "operators": [">=", "<=", "=", ">", "<"],
+        "operators": [
+          ">=",
+          "<=",
+          "=",
+          ">",
+          "<"
+        ],
         "hint": "YYYY-MM-DD"
       }
     ]
-  ]
+  ],
+  "SAVE_LOCATION": {
+    "default_folder": "",
+    "description": "Default folder to save Excel spreadsheets"
+  }
 }

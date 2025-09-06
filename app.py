@@ -129,8 +129,13 @@ class SQLFormatterApp:
         self.select_distinct_var = tk.BooleanVar(value=False)
         self.deduplicate_wafer_entries_var = tk.BooleanVar(value=False) # Note: Deduplication logic not fully implemented in original SQL builder
         self.quick_add_bins_entry_var = tk.StringVar()
-        # New output path controls
-        self.output_folder_var = tk.StringVar(value="")
+        # New output path controls - use defaults from active config if available
+        try:
+            default_folder = config.DEFAULT_SAVE_FOLDER
+        except Exception:
+            default_folder = ""
+        # We intentionally avoid a default filename so users must supply or accept timestamped names
+        self.output_folder_var = tk.StringVar(value=default_folder)
         self.output_file_name_var = tk.StringVar(value="")
         # History and saved queries
         self.history_file = "query_history.json"
@@ -640,8 +645,9 @@ class SQLFormatterApp:
 
             # Configure column headings
             for col in tree_columns:
-                self.pivot_tree.heading(col, text=col)
-                self.pivot_tree.column(col, anchor=tk.W, width=100)
+                col_id = str(col)  # ensure a concrete `str` (or use int(...) / typing.cast if you know it's an int)
+                self.pivot_tree.heading(col_id, text=col_id)
+                self.pivot_tree.column(col_id, anchor=tk.W, width=100)
 
             # Insert data
             for idx_tuple, row in pivot_df.iterrows():
@@ -696,7 +702,7 @@ class SQLFormatterApp:
             val_var = tk.StringVar(value=val_default)
             time_var = None
             if props["type"] == "date" and TKCALENDAR_AVAILABLE:
-                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, date_pattern='yyyy-mm-dd', borderwidth=2, state="readonly")
+                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, state="readonly")
                 date_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
                 default_time = "23:59:59" if "To" in name and props["default_op"] == "<=" else "00:00:00"
                 time_var = tk.StringVar(value=default_time)
@@ -857,6 +863,11 @@ class SQLFormatterApp:
                 row_data['col_combo_widget']['values'] = self.orderable_column_display_names_for_combo
                 if current not in self.orderable_column_display_names_for_combo:
                     row_data['column_var'].set("")
+
+        # Update the Pivot Table UI if it's open
+        if self.current_df is not None:
+            self._populate_pivot_table_column_lists()
+
         self._refresh_dynamic_selects()
 
     def _refresh_dynamic_selects(self):
