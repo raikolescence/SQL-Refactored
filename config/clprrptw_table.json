@@ -537,10 +537,10 @@
     ],
     [
       "End Time From",
-      {
-        "sql_col": "w.end_time",
-        "default_op": ">=",
-        "default_val": "{{TODAY}}",
+    {
+      "sql_col": "w.end_time",
+      "default_op": ">=",
+      "default_val": "{{TODAY_MINUS_MONTHS:1}}",
         "type": "date",
         "operators": [
           ">=",

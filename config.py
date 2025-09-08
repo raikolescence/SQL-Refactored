@@ -8,13 +8,37 @@ import os
 import json
 from collections import OrderedDict
 import datetime
+import calendar
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 
 # Helper to replace special tokens in JSON (like {{TODAY}})
 def _replace_tokens(val):
-    if isinstance(val, str) and val == "{{TODAY}}":
-        return datetime.datetime.now().strftime("%Y-%m-%d")
+    # Support token {{TODAY}} and {{TODAY_MINUS_MONTHS:n}}
+    if isinstance(val, str):
+        if val == "{{TODAY}}":
+            return datetime.datetime.now().strftime("%Y-%m-%d")
+        # Match token like {{TODAY_MINUS_MONTHS:1}}
+        if val.startswith("{{TODAY_MINUS_MONTHS:") and val.endswith("}}"):
+            try:
+                inner = val[len("{{TODAY_MINUS_MONTHS:"): -2]
+                months = int(inner)
+                today = datetime.datetime.now()
+                # Precise month subtraction without external deps: adjust year/month and clamp day to the
+                # last day of the target month (so e.g., Mar 31 - 1 month -> Feb 28/29)
+                year = today.year
+                month = today.month - months
+                while month <= 0:
+                    month += 12
+                    year -= 1
+                last_day = calendar.monthrange(year, month)[1]
+                day = min(today.day, last_day)
+                dt = datetime.datetime(year, month, day)
+                print(dt)
+                return dt.strftime("%Y-%m-%d")
+            except Exception:
+                print("AHH")
+                return datetime.datetime.now().strftime("%Y-%m-%d")
     if isinstance(val, list):
         return [_replace_tokens(v) for v in val]
     if isinstance(val, dict):

@@ -12,6 +12,7 @@ from collections import OrderedDict
 import datetime
 import re
 import os
+from tkinter import font as tkfont
 # Local module imports
 import config
 import sql_builder
@@ -395,33 +396,45 @@ class SQLFormatterApp:
         self.__init__(self.master)
 
     def _create_config_tab(self, tab):
-        config_frame = ttk.LabelFrame(tab, text="General Settings", padding="10")
+        # Create a ScrollableFrame to hold all config controls
+        config_scroll_frame = ScrollableFrame(tab, fit_width=True)
+        config_scroll_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # The actual config frame goes inside the scrollable frame
+        config_frame = ttk.LabelFrame(config_scroll_frame.scrollable_frame, text="General Settings", padding="10")
         config_frame.pack(fill=tk.X, expand=False, padx=5, pady=5)
         config_frame.columnconfigure(1, weight=1)
+        
         # Config switcher
         ttk.Label(config_frame, text="Config Preset:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         self.config_name_var = tk.StringVar(value=next(iter(config.discovered_configs.keys()), ""))
         config_combo = ttk.Combobox(config_frame, textvariable=self.config_name_var, values=list(config.discovered_configs.keys()), state="readonly")
         config_combo.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
         config_combo.bind("<<ComboboxSelected>>", self.switch_config)
+        
         ttk.Label(config_frame, text="Load Saved Query:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         self.saved_queries_combo_var = tk.StringVar()
         self.saved_queries_combo = ttk.Combobox(config_frame, textvariable=self.saved_queries_combo_var, state="readonly")
         self.saved_queries_combo.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=2)
         load_button = ttk.Button(config_frame, text="Load", command=self.load_query_from_config_tab)
         load_button.grid(row=1, column=2, padx=5, pady=2)
+        
         ttk.Label(config_frame, text="Good Bins for Yield:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
         self.good_bins_entry = ttk.Entry(config_frame, textvariable=self.good_bins_var)
         self.good_bins_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=2)
         ToolTip(self.good_bins_entry, "Comma-separated list of BIN numbers considered 'good' for yield (e.g., 1,2,3).")
         ttk.Label(config_frame, text="e.g., 1,2,3,5", style="Hint.TLabel").grid(row=2, column=2, sticky=tk.W, padx=5, pady=2)
+        
         ttk.Label(config_frame, text="Max Rows (ROWNUM):").grid(row=3, column=0, sticky=tk.W, padx=5, pady=2)
         ttk.Entry(config_frame, textvariable=self.max_rows_var, width=10).grid(row=3, column=1, sticky=tk.W, padx=5, pady=2)
+        
         ttk.Checkbutton(config_frame, text="Use SELECT DISTINCT", variable=self.select_distinct_var).grid(row=4, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
+        
         dedup_check = ttk.Checkbutton(config_frame, text="Deduplicate Wafer Entries (keeps latest by end_time)",
-                                      variable=self.deduplicate_wafer_entries_var)
+                                    variable=self.deduplicate_wafer_entries_var)
         dedup_check.grid(row=5, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
         ToolTip(dedup_check, "Note: This feature is a placeholder and not fully implemented in the SQL generation logic.")
+        
         # --- Output path controls (new)
         ttk.Label(config_frame, text="Output Folder:").grid(row=6, column=0, sticky=tk.W, padx=5, pady=2)
         output_folder_entry = ttk.Entry(config_frame, textvariable=self.output_folder_var)
@@ -429,6 +442,7 @@ class SQLFormatterApp:
         browse_folder_btn = ttk.Button(config_frame, text="Browse...", command=self.browse_output_folder)
         browse_folder_btn.grid(row=6, column=2, sticky=tk.W, padx=5, pady=2)
         ToolTip(browse_folder_btn, "Choose a folder where exported Excel files will be saved.")
+        
         ttk.Label(config_frame, text="Output File Name (optional):").grid(row=7, column=0, sticky=tk.W, padx=5, pady=2)
         output_file_entry = ttk.Entry(config_frame, textvariable=self.output_file_name_var)
         output_file_entry.grid(row=7, column=1, sticky=tk.EW, padx=5, pady=2)
@@ -515,97 +529,343 @@ class SQLFormatterApp:
     # -----------------------------
     def _create_pivot_table_tab(self, tab):
         """Creates the UI for the Pivot Table analysis tab."""
-        tab.columnconfigure(0, weight=1)
-        tab.rowconfigure(1, weight=1)
+        # Create main scrollable canvas
+        main_canvas = tk.Canvas(tab)
+        main_scrollbar = ttk.Scrollbar(tab, orient="vertical", command=main_canvas.yview)
+        main_scrollable_frame = ttk.Frame(main_canvas)
 
-        # Control Frame (Top)
-        control_frame = ttk.Frame(tab, padding="10")
-        control_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
-        control_frame.columnconfigure((1, 3, 5), weight=1)
+        # Configure scrolling
+        def _on_mousewheel(event):
+            main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            return "break"  # Prevent event propagation
 
-        # ROWS Section
-        ttk.Label(control_frame, text="Rows:").grid(row=0, column=0, sticky="w", padx=(0, 5), pady=2)
-        self.rows_listbox = Listbox(control_frame, selectmode=MULTIPLE, height=6, exportselection=False)
-        self.rows_listbox.grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=2)
-        rows_scrollbar = ttk.Scrollbar(control_frame, orient="vertical", command=self.rows_listbox.yview)
-        rows_scrollbar.grid(row=0, column=2, sticky="ns", pady=2)
-        self.rows_listbox.configure(yscrollcommand=rows_scrollbar.set)
+        main_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        
+        # Bind mousewheel to all frames and their children
+        def bind_recursive(widget):
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            for child in widget.winfo_children():
+                bind_recursive(child)
+        
+        bind_recursive(main_scrollable_frame)
+        main_canvas.bind("<MouseWheel>", _on_mousewheel)
+        
+        main_canvas.create_window((0, 0), window=main_scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=main_scrollbar.set)
 
-        # COLUMNS Section
-        ttk.Label(control_frame, text="Columns:").grid(row=0, column=3, sticky="w", padx=(0, 5), pady=2)
-        self.cols_listbox = Listbox(control_frame, selectmode=MULTIPLE, height=6, exportselection=False)
-        self.cols_listbox.grid(row=0, column=4, sticky="ew", padx=(0, 10), pady=2)
-        cols_scrollbar = ttk.Scrollbar(control_frame, orient="vertical", command=self.cols_listbox.yview)
-        cols_scrollbar.grid(row=0, column=5, sticky="ns", pady=2)
-        self.cols_listbox.configure(yscrollcommand=cols_scrollbar.set)
+        # Pack scrollbar and canvas
+        main_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # VALUES Section
-        ttk.Label(control_frame, text="Values:").grid(row=1, column=0, sticky="w", padx=(0, 5), pady=2)
-        self.vals_listbox = Listbox(control_frame, selectmode=MULTIPLE, height=6, exportselection=False)
-        self.vals_listbox.grid(row=1, column=1, sticky="ew", padx=(0, 10), pady=2)
-        vals_scrollbar = ttk.Scrollbar(control_frame, orient="vertical", command=self.vals_listbox.yview)
-        vals_scrollbar.grid(row=1, column=2, sticky="ns", pady=2)
-        self.vals_listbox.configure(yscrollcommand=vals_scrollbar.set)
+        # Main container with padding
+        main_frame = ttk.Frame(main_scrollable_frame, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # AGGREGATION Function
-        ttk.Label(control_frame, text="Aggregation:").grid(row=1, column=3, sticky="w", padx=(0, 5), pady=2)
-        self.agg_func_var = tk.StringVar(value="sum")
-        agg_combo = ttk.Combobox(control_frame, textvariable=self.agg_func_var, values=["sum", "mean", "count", "min", "max"], state="readonly", width=10)
-        agg_combo.grid(row=1, column=4, sticky="w", padx=(0, 10), pady=2)
+        # Title and description
+        title_frame = ttk.Frame(main_frame)
+        title_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(title_frame, text="Interactive Pivot Table", 
+                 font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT)
+        ttk.Label(title_frame, text="Analyze your data with dynamic pivot tables", 
+                 style="Hint.TLabel").pack(side=tk.LEFT, padx=(10, 0))
 
-        # Generate Button
-        generate_pivot_btn = ttk.Button(control_frame, text="Generate Pivot Table", command=self.generate_pivot_table)
-        generate_pivot_btn.grid(row=1, column=5, sticky="e", padx=(0, 5), pady=2)
+        # Control section with modern styling
+        control_frame = ttk.LabelFrame(main_frame, text="Pivot Table Settings", padding="10")
+        control_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Result Frame (Bottom)
-        result_frame = ttk.LabelFrame(tab, text="Pivot Table Result", padding="10")
-        result_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
+        # Create three columns for fields
+        fields_frame = ttk.Frame(control_frame)
+        fields_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Row Fields (Left)
+        row_frame = ttk.LabelFrame(fields_frame, text="Row Fields (Hierarchy Top→Bottom)", padding="5")
+        row_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        
+        # Create scrollable frame for row checkboxes
+        row_canvas = tk.Canvas(row_frame, bg="white", highlightthickness=0)
+        row_scrollbar = ttk.Scrollbar(row_frame, orient="vertical", command=row_canvas.yview)
+        row_scrollable_frame = ttk.Frame(row_canvas)
+        
+        row_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: row_canvas.configure(scrollregion=row_canvas.bbox("all"))
+        )
+        row_canvas.create_window((0, 0), window=row_scrollable_frame, anchor="nw")
+        row_canvas.configure(yscrollcommand=row_scrollbar.set)
+        
+        # Store row checkbuttons and their variables
+        self.row_vars = []
+        self.row_buttons = []
+        self.row_numbers = []  # To store the order numbers
+        
+        # Column Fields (Middle)
+        col_frame = ttk.LabelFrame(fields_frame, text="Column Fields (Hierarchy Left→Right)", padding="5")
+        col_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+        
+        # Create scrollable frame for column checkboxes
+        col_canvas = tk.Canvas(col_frame, bg="white", highlightthickness=0)
+        col_scrollbar = ttk.Scrollbar(col_frame, orient="vertical", command=col_canvas.yview)
+        col_scrollable_frame = ttk.Frame(col_canvas)
+        
+        col_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: col_canvas.configure(scrollregion=col_canvas.bbox("all"))
+        )
+        col_canvas.create_window((0, 0), window=col_scrollable_frame, anchor="nw")
+        col_canvas.configure(yscrollcommand=col_scrollbar.set)
+        
+        # Store column checkbuttons and their variables
+        self.col_vars = []
+        self.col_buttons = []
+        self.col_numbers = []  # To store the order numbers
+        
+        # Value Fields (Right)
+        val_frame = ttk.LabelFrame(fields_frame, text="Value Fields", padding="5")
+        val_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        
+        # Create scrollable frame for value checkboxes
+        val_canvas = tk.Canvas(val_frame, bg="white", highlightthickness=0)
+        val_scrollbar = ttk.Scrollbar(val_frame, orient="vertical", command=val_canvas.yview)
+        val_scrollable_frame = ttk.Frame(val_canvas)
+        
+        val_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: val_canvas.configure(scrollregion=val_canvas.bbox("all"))
+        )
+        val_canvas.create_window((0, 0), window=val_scrollable_frame, anchor="nw")
+        val_canvas.configure(yscrollcommand=val_scrollbar.set)
+        
+        # Store value checkbuttons and their variables
+        self.val_vars = []
+        self.val_buttons = []
+        
+        # Pack the canvases and scrollbars
+        for canvas, scrollbar in [(row_canvas, row_scrollbar), 
+                                (col_canvas, col_scrollbar), 
+                                (val_canvas, val_scrollbar)]:
+            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
+        # Store the frames for population later
+        self.row_scrollable_frame = row_scrollable_frame
+        self.col_scrollable_frame = col_scrollable_frame
+        self.val_scrollable_frame = val_scrollable_frame
 
-        # Treeview for displaying the pivot table
-        self.pivot_tree = ttk.Treeview(result_frame, show="headings")
-        self.pivot_tree.grid(row=0, column=0, sticky="nsew")
+        # Options Frame
+        options_frame = ttk.Frame(control_frame)
+        options_frame.pack(fill=tk.X, pady=(10, 5))
 
-        # Scrollbars for Treeview
-        pivot_yscroll = ttk.Scrollbar(result_frame, orient="vertical", command=self.pivot_tree.yview)
-        pivot_yscroll.grid(row=0, column=1, sticky="ns")
-        pivot_xscroll = ttk.Scrollbar(result_frame, orient="horizontal", command=self.pivot_tree.xview)
-        pivot_xscroll.grid(row=1, column=0, sticky="ew")
-        self.pivot_tree.configure(yscrollcommand=pivot_yscroll.set, xscrollcommand=pivot_xscroll.set)
+        # Aggregation Function
+        ttk.Label(options_frame, text="Aggregation:").pack(side=tk.LEFT)
+        self.agg_func_var = tk.StringVar(value="mean")  # Default to "mean" (average)
+        # Map user-friendly names to pandas aggregation functions
+        self.agg_func_map = {
+            "Average": "mean",
+            "Sum": "sum",
+            "Count": "count",
+            "Min": "min",
+            "Max": "max"
+        }
+        agg_combo = ttk.Combobox(options_frame, textvariable=self.agg_func_var,
+                                values=list(self.agg_func_map.keys()),
+                                state="readonly", width=15)
+        agg_combo.set("Average")  # Set default display value
+        agg_combo.pack(side=tk.LEFT, padx=(5, 10))
+
+        # Buttons frame
+        button_frame = ttk.Frame(control_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+
+        # Style for the main action button
+        self.style.configure("Action.TButton", font=("Segoe UI", 10))
+        
+        # Help/Info button
+        help_btn = ttk.Button(button_frame, text="How to Use",
+                             command=self.show_pivot_help)
+        help_btn.pack(side=tk.LEFT, padx=5)
+
+        # Generate button with icon (if available)
+        generate_btn = ttk.Button(button_frame, text="Generate Pivot Table",
+                                style="Action.TButton", 
+                                command=self.show_pivot_table_window)
+        generate_btn.pack(side=tk.LEFT, padx=5)
 
         # Initialize column lists
         self._populate_pivot_table_column_lists()
 
+        # Create tooltips for frames
+        ToolTip(row_frame, "Select fields to group by rows. Numbers show top-to-bottom hierarchy.")
+        ToolTip(col_frame, "Select fields to group by columns. Numbers show left-to-right hierarchy.")
+        ToolTip(val_frame, "Select numeric fields to analyze in the pivot table")
+        ToolTip(agg_combo, "Choose how to aggregate the values")
+        ToolTip(generate_btn, "Click to generate and view the pivot table in a new window")
+
     def _populate_pivot_table_column_lists(self):
-        """Populates the Listbox widgets with column names from `self.current_df`."""
+        """Populates the checkboxes with column names from self.current_df."""
         # Clear existing items
-        self.rows_listbox.delete(0, tk.END)
-        self.cols_listbox.delete(0, tk.END)
-        self.vals_listbox.delete(0, tk.END)
+        for frame, vars_list, buttons in [
+            (self.row_scrollable_frame, self.row_vars, self.row_buttons),
+            (self.col_scrollable_frame, self.col_vars, self.col_buttons),
+            (self.val_scrollable_frame, self.val_vars, self.val_buttons)
+        ]:
+            for widget in frame.winfo_children():
+                widget.destroy()
+            vars_list.clear()
+            buttons.clear()
 
         if self.current_df is not None:
-            for col in self.current_df.columns:
-                self.rows_listbox.insert(tk.END, col)
-                self.cols_listbox.insert(tk.END, col)
-                self.vals_listbox.insert(tk.END, col)
+            # Create checkbox style with more padding and larger font
+            self.style.configure("Pivot.TCheckbutton", 
+                               padding=5,
+                               font=("Segoe UI", 10))
 
-    def generate_pivot_table(self):
-        """Generates a pivot table based on user selections and displays it in the Treeview."""
+            # Populate Row Fields (with numbers for ordering)
+            self.row_numbers = []  # Reset numbers
+            ttk.Label(self.row_scrollable_frame, 
+                     text="Click to select, numbers show hierarchy:",
+                     font=("Segoe UI", 9, "italic")).pack(anchor=tk.W, pady=(0, 5))
+            
+            for col in self.current_df.columns:
+                row_var = tk.BooleanVar()
+                self.row_vars.append(row_var)
+                
+                # Create frame for the checkbox and number label
+                row_item_frame = ttk.Frame(self.row_scrollable_frame)
+                row_item_frame.pack(fill=tk.X, pady=2)
+                
+                # Checkbox
+                cb = ttk.Checkbutton(
+                    row_item_frame,
+                    text=col,
+                    variable=row_var,
+                    style="Pivot.TCheckbutton",
+                    command=lambda c=col: self._update_row_numbers(c)
+                )
+                cb.pack(side=tk.LEFT)
+                self.row_buttons.append(cb)
+                
+                # Number label
+                num_label = ttk.Label(row_item_frame, width=3)
+                num_label.pack(side=tk.LEFT, padx=(5, 0))
+                self.row_numbers.append(num_label)
+            
+            # Populate Column Fields (with numbers for ordering)
+            self.col_numbers = []  # Reset numbers
+            ttk.Label(self.col_scrollable_frame, 
+                     text="Click to select, numbers show hierarchy:",
+                     font=("Segoe UI", 9, "italic")).pack(anchor=tk.W, pady=(0, 5))
+            
+            for col in self.current_df.columns:
+                col_var = tk.BooleanVar()
+                self.col_vars.append(col_var)
+                
+                # Create frame for the checkbox and number label
+                col_item_frame = ttk.Frame(self.col_scrollable_frame)
+                col_item_frame.pack(fill=tk.X, pady=2)
+                
+                # Checkbox
+                cb = ttk.Checkbutton(
+                    col_item_frame,
+                    text=col,
+                    variable=col_var,
+                    style="Pivot.TCheckbutton",
+                    command=lambda c=col: self._update_column_numbers(c)
+                )
+                cb.pack(side=tk.LEFT)
+                self.col_buttons.append(cb)
+                
+                # Number label
+                num_label = ttk.Label(col_item_frame, width=3)
+                num_label.pack(side=tk.LEFT, padx=(5, 0))
+                self.col_numbers.append(num_label)
+
+            # Populate Value Fields (only bin-related columns)
+            ttk.Label(self.val_scrollable_frame, 
+                     text="Select bin fields to analyze:",
+                     font=("Segoe UI", 9, "italic")).pack(anchor=tk.W, pady=(0, 5))
+            
+            # Create inner frame for value checkboxes with scrolling
+            values_inner_frame = ttk.Frame(self.val_scrollable_frame)
+            values_inner_frame.pack(fill=tk.BOTH, expand=True)
+            
+            # Only show bin-related columns and numeric columns
+            bin_columns = [col for col in self.current_df.columns 
+                         if any(bin_term in col.lower() 
+                               for bin_term in ['bin', 'good_bin', 'yield', 'total'])]
+            
+            for col in bin_columns:
+                val_var = tk.BooleanVar()
+                self.val_vars.append(val_var)
+                cb = ttk.Checkbutton(
+                    values_inner_frame,
+                    text=col,
+                    variable=val_var,
+                    style="Pivot.TCheckbutton"
+                )
+                cb.pack(anchor=tk.W, pady=2)
+                self.val_buttons.append(cb)
+                
+            if not bin_columns:
+                ttk.Label(values_inner_frame,
+                         text="No bin-related columns found",
+                         font=("Segoe UI", 9, "italic"),
+                         foreground="gray").pack(pady=10)
+
+    def _update_row_numbers(self, column):
+        """Update the numbering of selected row fields."""
+        selected = [(i, btn) for i, (btn, var) in enumerate(zip(self.row_buttons, self.row_vars)) 
+                   if var.get()]
+        # Update number labels
+        for num_label in self.row_numbers:
+            num_label.configure(text="")
+        for order, (i, _) in enumerate(selected, 1):
+            self.row_numbers[i].configure(text=str(order))
+
+    def _update_column_numbers(self, column):
+        """Update the numbering of selected column fields."""
+        selected = [(i, btn) for i, (btn, var) in enumerate(zip(self.col_buttons, self.col_vars)) 
+                   if var.get()]
+        # Update number labels
+        for num_label in self.col_numbers:
+            num_label.configure(text="")
+        for order, (i, _) in enumerate(selected, 1):
+            self.col_numbers[i].configure(text=str(order))
+
+    def show_pivot_table_window(self):
+        """Opens a new window to display the pivot table in an Excel-like format."""
         if self.current_df is None:
             messagebox.showwarning("No Data", "No data in memory. Run a query using 'Store in Memory' first.", parent=self.master)
             return
 
-        # Get selected indices
-        row_indices = self.rows_listbox.curselection()
-        col_indices = self.cols_listbox.curselection()
-        val_indices = self.vals_listbox.curselection()
-
-        # Get selected column names
-        index_cols = [self.rows_listbox.get(i) for i in row_indices] if row_indices else None
-        columns = [self.cols_listbox.get(i) for i in col_indices] if col_indices else None
-        values = [self.vals_listbox.get(i) for i in val_indices] if val_indices else None
-        agg_func = self.agg_func_var.get()
+        # Get selected fields in order
+        row_fields = []
+        for i, (var, btn) in enumerate(zip(self.row_vars, self.row_buttons)):
+            if var.get():
+                # Get the number from the label
+                num = self.row_numbers[i]['text']
+                if num:  # Only add if numbered
+                    row_fields.append((int(num), btn['text']))
+        
+        col_fields = []
+        for i, (var, btn) in enumerate(zip(self.col_vars, self.col_buttons)):
+            if var.get():
+                # Get the number from the label
+                num = self.col_numbers[i]['text']
+                if num:  # Only add if numbered
+                    col_fields.append((int(num), btn['text']))
+        
+        # Sort by the assigned numbers and extract just the field names
+        index_cols = [field for _, field in sorted(row_fields)] if row_fields else None
+        columns = [field for _, field in sorted(col_fields)] if col_fields else None
+        
+        # Get selected value fields
+        values = [btn['text'] for var, btn in zip(self.val_vars, self.val_buttons) 
+                 if var.get()]
+        # Get the pandas aggregation function from our mapping
+        agg_func = self.agg_func_map[self.agg_func_var.get()]
 
         if not values:
             messagebox.showwarning("No Values", "Please select at least one column for 'Values'.", parent=self.master)
@@ -618,20 +878,78 @@ class SQLFormatterApp:
                 columns=columns,
                 values=values,
                 aggfunc=agg_func,
-                fill_value=0, # or NaN, depending on preference
-                margins=False
+                fill_value=0,
+                margins=True  # Add totals
             )
 
-            # Clear existing treeview
-            self.pivot_tree.delete(*self.pivot_tree.get_children())
-            self.pivot_tree['columns'] = []
+            # Create new window
+            pivot_window = tk.Toplevel(self.master)
+            pivot_window.title("Pivot Table Analysis")
+            pivot_window.geometry("1000x600")
+            pivot_window.minsize(800, 400)
 
-            # Handle MultiIndex for columns (from 'columns' and 'values')
+            # Menu bar
+            menu_bar = tk.Menu(pivot_window)
+            pivot_window.config(menu=menu_bar)
+            
+            # File menu
+            file_menu = tk.Menu(menu_bar, tearoff=0)
+            menu_bar.add_cascade(label="File", menu=file_menu)
+            file_menu.add_command(label="Export to Excel", 
+                                command=lambda: self.export_pivot_to_excel(pivot_df))
+            file_menu.add_separator()
+            file_menu.add_command(label="Close", command=pivot_window.destroy)
+
+            # View menu
+            view_menu = tk.Menu(menu_bar, tearoff=0)
+            menu_bar.add_cascade(label="View", menu=view_menu)
+            show_totals = tk.BooleanVar(value=True)
+            view_menu.add_checkbutton(label="Show Totals", 
+                                    variable=show_totals,
+                                    command=lambda: self.toggle_totals(pivot_df, show_totals.get(), tree))
+
+            # Main container with padding
+            main_frame = ttk.Frame(pivot_window, padding="10")
+            main_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Title frame
+            title_frame = ttk.Frame(main_frame)
+            title_frame.pack(fill=tk.X, pady=(0, 10))
+            title = f"Pivot Analysis: {', '.join(values)} by {', '.join(index_cols or [])} and {', '.join(columns or [])}"
+            ttk.Label(title_frame, text=title, font=("Segoe UI", 11, "bold")).pack(side=tk.LEFT)
+
+            # Create tree with custom style for Excel-like appearance
+            style = ttk.Style()
+            style.configure("Pivot.Treeview",
+                          background="white",
+                          foreground="black",
+                          fieldbackground="white",
+                          rowheight=25)
+            style.configure("Pivot.Treeview.Heading",
+                          font=("Segoe UI", 9, "bold"))
+
+            # Tree container
+            tree_frame = ttk.Frame(main_frame)
+            tree_frame.pack(fill=tk.BOTH, expand=True)
+            tree_frame.columnconfigure(0, weight=1)
+            tree_frame.rowconfigure(0, weight=1)
+
+            # Create Treeview
+            tree = ttk.Treeview(tree_frame, style="Pivot.Treeview", show="headings")
+            tree.grid(row=0, column=0, sticky="nsew")
+
+            # Scrollbars
+            vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+            hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+            tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+            vsb.grid(row=0, column=1, sticky="ns")
+            hsb.grid(row=1, column=0, sticky="ew")
+
+            # Handle MultiIndex columns
             if isinstance(pivot_df.columns, pd.MultiIndex):
-                # Flatten column names for display
-                col_headers = [' | '.join([str(x) for x in col]).strip() for col in pivot_df.columns]
+                col_headers = [' | '.join(str(x) for x in col).strip() for col in pivot_df.columns]
             else:
-                col_headers = list(pivot_df.columns)
+                col_headers = list(map(str, pivot_df.columns))
 
             # Handle MultiIndex for index
             if isinstance(pivot_df.index, pd.MultiIndex):
@@ -639,40 +957,168 @@ class SQLFormatterApp:
             else:
                 index_names = [pivot_df.index.name] if pivot_df.index.name else ['Index']
 
-            # Set up Treeview columns
+            # Configure tree columns
             tree_columns = index_names + col_headers
-            self.pivot_tree['columns'] = tree_columns
+            tree['columns'] = tree_columns
 
-            # Configure column headings
+            # Configure column headings with Excel-like appearance and sorting
+            def make_sort_func(col, tree):
+                def sort_by_column():
+                    # Get current sort column and order
+                    current_sort = getattr(tree, '_sort_by', None)
+                    current_order = getattr(tree, '_sort_order', 'asc')
+                    
+                    # Toggle order if same column, else default to asc
+                    if current_sort == col and current_order == 'asc':
+                        order = 'desc'
+                    else:
+                        order = 'asc'
+                    
+                    # Store new sort state
+                    tree._sort_by = col
+                    tree._sort_order = order
+                    
+                    # Get all items
+                    item_list = [(tree.set(item, col), item) for item in tree.get_children('')]
+                    
+                    # Convert numbers for proper sorting
+                    def convert_value(val):
+                        try:
+                            # Remove commas from numbers and convert
+                            val = val.replace(',', '')
+                            return float(val)
+                        except:
+                            return val
+                            
+                    # Sort items
+                    item_list.sort(key=lambda x: convert_value(x[0]), 
+                                 reverse=(order == 'desc'))
+                    
+                    # Rearrange items in sorted order
+                    for index, (_, item) in enumerate(item_list):
+                        tree.move(item, '', index)
+                    
+                    # Update header to show sort order
+                    for c in tree_columns:
+                        if c == col:
+                            arrow = " ▼" if order == 'desc' else " ▲"
+                            tree.heading(c, text=f"{c}{arrow}")
+                        else:
+                            tree.heading(c, text=c)
+                            
+                return sort_by_column
+
+            # Configure column headings with sorting
             for col in tree_columns:
-                col_id = str(col)  # ensure a concrete `str` (or use int(...) / typing.cast if you know it's an int)
-                self.pivot_tree.heading(col_id, text=col_id)
-                self.pivot_tree.column(col_id, anchor=tk.W, width=100)
+                col_id = str(col)
+                tree.heading(col_id, 
+                           text=col_id,
+                           command=make_sort_func(col_id, tree))
+                # Determine column width based on content
+                max_width = len(col_id) * 10  # Base width on header
+                tree.column(col_id, width=min(max_width, 150), anchor=tk.W)
 
-            # Insert data
-            for idx_tuple, row in pivot_df.iterrows():
+            # Insert data with alternate row colors
+            for idx, (idx_tuple, row) in enumerate(pivot_df.iterrows()):
                 if isinstance(idx_tuple, tuple):
                     tree_row = list(idx_tuple)
                 else:
                     tree_row = [idx_tuple]
 
-                # Convert row values to list
+                # Convert row values to list and format numbers
                 if isinstance(row, pd.Series):
-                    row_values = row.tolist()
+                    row_values = [self.format_number(val) for val in row]
                 else:
-                    row_values = [row]
+                    row_values = [self.format_number(row)]
 
-                # Combine index and value parts
+                # Combine index and values
                 tree_row.extend(row_values)
-                # Convert all items to string for display
                 tree_row = [str(item) for item in tree_row]
-                self.pivot_tree.insert("", tk.END, values=tree_row)
 
-            self.status_bar.config(text=f"Pivot table generated with {len(pivot_df)} rows.")
+                # Insert with tags for alternating colors
+                tags = ('evenrow',) if idx % 2 == 0 else ('oddrow',)
+                if "Total" in str(idx_tuple):  # Style for total rows
+                    tags = ('total',)
+                tree.insert("", tk.END, values=tree_row, tags=tags)
+
+            # Configure row colors
+            tree.tag_configure('evenrow', background='#ffffff')
+            tree.tag_configure('oddrow', background='#f0f0f0')
+            tree.tag_configure('total', background='#e6e6e6', font=("Segoe UI", 9, "bold"))
+
+            # Status bar
+            status_frame = ttk.Frame(main_frame)
+            status_frame.pack(fill=tk.X, pady=(10, 0))
+            ttk.Label(status_frame, 
+                     text=f"Pivot table generated with {len(pivot_df)} rows • {agg_func.title()} aggregation",
+                     style="Hint.TLabel").pack(side=tk.LEFT)
+
+            # Center the window on screen
+            pivot_window.update_idletasks()
+            width = pivot_window.winfo_width()
+            height = pivot_window.winfo_height()
+            x = (pivot_window.winfo_screenwidth() // 2) - (width // 2)
+            y = (pivot_window.winfo_screenheight() // 2) - (height // 2)
+            pivot_window.geometry(f'{width}x{height}+{x}+{y}')
 
         except Exception as e:
             messagebox.showerror("Pivot Error", f"Failed to create pivot table:\n{str(e)}", parent=self.master)
             self.status_bar.config(text="Error generating pivot table.")
+
+    def format_number(self, value):
+        """Format numbers for display in the pivot table."""
+        if pd.isna(value):
+            return ""
+        if isinstance(value, (int, float)):
+            if value == int(value):
+                return f"{int(value):,}"
+            return f"{value:,.2f}"
+        return str(value)
+
+    def export_pivot_to_excel(self, pivot_df):
+        """Export the pivot table to Excel with formatting."""
+        try:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                title="Export Pivot Table"
+            )
+            if file_path:
+                pivot_df.to_excel(file_path)
+                messagebox.showinfo("Success", f"Pivot table exported to:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export pivot table:\n{str(e)}")
+
+    def toggle_totals(self, pivot_df, show_totals, tree):
+        """Toggle the display of total rows in the pivot table."""
+        if not show_totals:
+            for item in tree.get_children():
+                if tree.item(item)['tags'] and 'total' in tree.item(item)['tags']:
+                    tree.delete(item)
+        else:
+            self.show_pivot_table_window()  # Refresh the entire table
+
+    def show_pivot_help(self):
+        """Show help information for using the pivot table."""
+        help_text = """
+How to Use the Pivot Table:
+
+1. Row Fields: Select fields to group data by rows
+2. Column Fields: Select fields to group data by columns
+3. Value Fields: Select numeric fields to analyze
+4. Aggregation: Choose how to calculate values:
+   - Sum: Total of all values
+   - Average: Mean value
+   - Count: Number of occurrences
+   - Min/Max: Smallest/largest values
+
+Tips:
+• Select multiple fields using Ctrl+Click
+• Export to Excel for additional analysis
+• Use View menu to show/hide totals
+• Double-click column headers to sort
+"""
+        messagebox.showinfo("Pivot Table Help", help_text, parent=self.master)
 
     # -----------------------------
     # (Filters, Order By, Aggregate, History, Saved Tabs - Unchanged)
@@ -682,29 +1128,69 @@ class SQLFormatterApp:
         filters_scroll_frame = ScrollableFrame(tab, fit_width=True)
         filters_scroll_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         filters_scroll_frame.scrollable_frame.columnconfigure(0, weight=1)
+        
         for i, (name, props) in enumerate(config.FILTER_OPTIONS.items()):
             row_frame = ttk.Frame(filters_scroll_frame.scrollable_frame)
             row_frame.grid(row=i, column=0, sticky=tk.EW, pady=3)
             row_frame.columnconfigure(2, weight=1)
             ttk.Label(row_frame, text=f"{name}:").pack(side=tk.LEFT, padx=5)
+            
             op_default = props.get("default_op", "")
             if isinstance(op_default, list):
                 op_default = op_default[0] if op_default else ""
             op_var = tk.StringVar(value=op_default)
             op_values = props.get("operators", [])
-            if isinstance(op_values, str):
-                op_values = [op_values]
-            op_combo = ttk.Combobox(row_frame, textvariable=op_var, values=op_values, width=8, state="readonly")
-            op_combo.pack(side=tk.LEFT, padx=5)
+            
+            # Prepare value and time variables (use default_val from config if present)
             val_default = props.get("default_val", "")
             if isinstance(val_default, list):
                 val_default = val_default[0] if val_default else ""
             val_var = tk.StringVar(value=val_default)
             time_var = None
-            if props["type"] == "date" and TKCALENDAR_AVAILABLE:
-                date_entry = DateEntry(row_frame, textvariable=val_var, width=12, state="readonly")
-                date_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-                default_time = "23:59:59" if "To" in name and props["default_op"] == "<=" else "00:00:00"
+            
+            if props["type"] == "date":
+                # Always provide a date entry and a time field. Use tkcalendar.DateEntry if available for nicer UX.
+                if TKCALENDAR_AVAILABLE:
+                    try:
+                        # Special handling for End Time From and End Time To
+                        if name == "End Time From":
+                            # For End Time From, use one month before today as default
+                            today = datetime.datetime.now()
+                            last_month = today.replace(day=1) - datetime.timedelta(days=1)
+                            default_date = last_month.date()
+                        elif name == "End Time To":
+                            # For End Time To, use today as default
+                            default_date = datetime.datetime.now().date()
+                        else:
+                            # For other date fields, use the config default
+                            default_date = datetime.datetime.strptime(val_default, "%Y-%m-%d").date()
+                        
+                        # Create DateEntry with the correct default date
+                        date_entry = DateEntry(
+                            row_frame,
+                            width=12,
+                            state="readonly",
+                            background='white',
+                            foreground='black',
+                            date_pattern='yyyy-mm-dd'
+                        )
+                        # Set the initial date using set_date() method
+                        date_entry.set_date(default_date)
+                        # Link the variable so changes are tracked
+                        date_entry.config(textvariable=val_var)
+                        
+                    except ValueError:
+                        # Fallback to today if parsing fails
+                        default_date = datetime.datetime.now().date()
+                        date_entry = DateEntry(row_frame, textvariable=val_var, width=12, state="readonly")
+                        date_entry.set_date(default_date)
+                    date_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+                else:
+                    entry = ttk.Entry(row_frame, textvariable=val_var)
+                    entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+                
+                # Default time: end-of-day for 'To' filters, start-of-day for others
+                default_time = "23:59:59" if "To" in name and props.get("default_op") == "<=" else "00:00:00"
                 time_var = tk.StringVar(value=default_time)
                 time_entry = ttk.Entry(row_frame, textvariable=time_var, width=10)
                 time_entry.pack(side=tk.LEFT, padx=2)
@@ -712,8 +1198,10 @@ class SQLFormatterApp:
             else:
                 entry = ttk.Entry(row_frame, textvariable=val_var)
                 entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+            
             if props.get("hint"):
                 ttk.Label(row_frame, text=f"({props['hint']})", style="Hint.TLabel").pack(side=tk.LEFT, padx=5)
+            
             self.filter_widgets[name] = {'op_var': op_var, 'val_var': val_var, 'time_var': time_var, 'props': props}
 
     def _create_order_by_tab(self, tab):
